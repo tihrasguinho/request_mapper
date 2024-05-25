@@ -26,20 +26,11 @@ class Request extends Stream<Uint8List> {
   });
 
   factory Request.fromHttpRequest(io.HttpRequest request) {
+    final headers = <String, String>{};
+    request.headers.forEach((key, value) => headers[key] = value.join(', '));
     return Request(
       uri: request.uri,
-      headers: {
-        io.HttpHeaders.contentTypeHeader: request.headers.value(io.HttpHeaders.contentTypeHeader) ?? 'text/plain',
-        io.HttpHeaders.contentLengthHeader: request.headers.value(io.HttpHeaders.contentLengthHeader) ?? '0',
-        io.HttpHeaders.cookieHeader: request.headers.value(io.HttpHeaders.cookieHeader) ?? '',
-        io.HttpHeaders.hostHeader: request.headers.value(io.HttpHeaders.hostHeader) ?? '',
-        io.HttpHeaders.userAgentHeader: request.headers.value(io.HttpHeaders.userAgentHeader) ?? '',
-        io.HttpHeaders.authorizationHeader: request.headers.value(io.HttpHeaders.authorizationHeader) ?? '',
-        io.HttpHeaders.connectionHeader: request.headers.value(io.HttpHeaders.connectionHeader) ?? '',
-        io.HttpHeaders.transferEncodingHeader: request.headers.value(io.HttpHeaders.transferEncodingHeader) ?? '',
-        io.HttpHeaders.proxyAuthorizationHeader: request.headers.value(io.HttpHeaders.proxyAuthorizationHeader) ?? '',
-        io.HttpHeaders.dateHeader: request.headers.value(io.HttpHeaders.dateHeader) ?? DateTime.now().toIso8601String(),
-      }..removeWhere((key, value) => value.isEmpty),
+      headers: headers,
       queryParameters: request.uri.queryParameters,
       pathParameters: {},
       body: request,
@@ -57,6 +48,12 @@ class Request extends Stream<Uint8List> {
 
   /// Gets the request content length.
   int get contentLength => int.tryParse(headers[io.HttpHeaders.contentLengthHeader] ?? '0') ?? 0;
+
+  /// Gets a path parameter from the request.
+  /// Returns `null` if the parameter is not found.
+  String? parameter(String key) {
+    return pathParameters[key];
+  }
 
   /// Reads the request body as a string.
   Future<String> readString([Encoding encoding = utf8]) async {

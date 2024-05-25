@@ -1,9 +1,15 @@
+import 'dart:io';
+
+import 'package:mime/mime.dart';
+import 'package:path/path.dart' as p;
 import 'package:request_mapper/request_mapper.dart';
 
 void main() async {
-  final mapper = Mapper();
+  final mapper = Mapper(prefix: '/api/v1');
 
   mapper.get('/', root);
+
+  mapper.filesHandler('/files', './example/storage');
 
   mapper.post('/upload', (req, res) async {
     if (req.multipart) {
@@ -28,10 +34,26 @@ void main() async {
 }
 
 void root(Request req, Response res) {
+  print(req.headers);
   return res.json(
     200,
     body: {
       'message': 'Current Timestamp is ${DateTime.now().toIso8601String()}',
+    },
+  );
+}
+
+void files(Request req, Response res) async {
+  final any = req.parameter('any');
+  if (any == null) return res(400, body: 'Parameter `filename` is required');
+  final file = File(p.join(Directory.current.path, 'example', 'storage', any));
+  if (!file.existsSync()) return res(404, body: 'File not found');
+  return res.stream(
+    200,
+    body: file.openRead(),
+    headers: {
+      'content-type': lookupMimeType(file.path) ?? 'application/octet-stream',
+      'content-length': file.lengthSync().toString(),
     },
   );
 }
@@ -130,7 +152,7 @@ class UsersController extends Controller {
   }
 
   void _getUser(Request req, Response response) async {
-    final id = int.parse(req.pathParameters['id']!);
+    final id = int.parse(req.parameter('id')!);
 
     if (!_users.any((user) => user.id == id)) {
       return response.json(404, body: {'error': 'User not found'});
@@ -145,7 +167,7 @@ class UsersController extends Controller {
   }
 
   void _update(Request req, Response response) async {
-    final id = int.parse(req.pathParameters['id']!);
+    final id = int.parse(req.parameter('id')!);
 
     if (!_users.any((user) => user.id == id)) {
       return response.json(404, body: {'error': 'User not found'});
@@ -169,7 +191,7 @@ class UsersController extends Controller {
   }
 
   void _delete(Request req, Response response) async {
-    final id = int.parse(req.pathParameters['id']!);
+    final id = int.parse(req.parameter('id')!);
 
     if (!_users.any((user) => user.id == id)) {
       return response.json(404, body: {'error': 'User not found'});

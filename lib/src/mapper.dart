@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io' as io;
+import 'dart:io';
 
+import 'package:mime/mime.dart';
+import 'package:path/path.dart' as p;
 import 'package:request_mapper/src/request.dart';
 
 import 'connection.dart';
@@ -15,7 +18,7 @@ class Mapper {
 
   const Mapper._(this._group);
 
-  Mapper() : this._(Group());
+  Mapper({String? prefix}) : this._(Group(prefix));
 
   /// Adds a new route to the mapper.
   void add(String path, Method method, Handler handler) {
@@ -76,6 +79,33 @@ class Mapper {
       return true;
     }());
     return _group.add(path, Get(), handler);
+  }
+
+  /// Adds a new file server route to the mapper.
+  void filesHandler(String path, String directory) {
+    return _group.add(
+      '$path/{filename}',
+      Get(),
+      (Request req, Response res) async {
+        try {
+          if (!io.Directory(p.normalize(directory)).existsSync()) return res(404, body: 'Directory not found');
+          final filename = req.parameter('filename');
+          if (filename == null) return res(400, body: 'Parameter `filename` is required');
+          final file = File(p.join(p.normalize(directory), filename));
+          if (!file.existsSync()) return res(404, body: 'File not found');
+          return res.stream(
+            200,
+            body: file.openRead(),
+            headers: {
+              'content-type': lookupMimeType(file.path) ?? 'application/octet-stream',
+              'content-length': file.lengthSync().toString(),
+            },
+          );
+        } on Exception catch (e) {
+          return res(500, body: e.toString());
+        }
+      },
+    );
   }
 
   /// Starts the server, listening on [address] and [port].
