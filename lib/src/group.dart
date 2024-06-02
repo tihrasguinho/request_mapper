@@ -98,6 +98,8 @@ class Group {
 
   /// Merges another [Group] into this one.
   void merge(Group group) {
-    entries.addAll(group.entries);
+    for (final entry in group.entries) {
+      add(entry.path, entry.method, entry.handler);
+    }
   }
 }
