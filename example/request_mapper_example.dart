@@ -7,30 +7,34 @@ import 'package:request_mapper/request_mapper.dart';
 void main() async {
   final mapper = Mapper(prefix: '/api/v1');
 
-  mapper.get('/', root);
+  try {
+    mapper.get('/', root);
 
-  mapper.filesHandler('/files', './example/storage');
+    mapper.filesHandler('/files', './example/storage');
 
-  mapper.post('/upload', (req, res) async {
-    if (req.multipart) {
-      await for (final part in req.parts) {
-        if (part.filename != null) {
-          final bytes = await part.asUint8List();
-          print([part.name, part.filename, part.mimeType, bytes.lengthInBytes]);
-        } else {
-          final string = await part.asString();
-          print(string);
+    mapper.post('/upload', (req, res) async {
+      if (req.multipart) {
+        await for (final part in req.parts) {
+          if (part.filename != null) {
+            final bytes = await part.asUint8List();
+            print([part.name, part.filename, part.mimeType, bytes.lengthInBytes]);
+          } else {
+            final string = await part.asString();
+            print(string);
+          }
         }
       }
-    }
-    return res.json(200);
-  });
+      return res.json(200);
+    });
 
-  mapper.controller(UsersController('/users'));
+    mapper.controller(UsersController('/users'));
 
-  mapper.controller(WebSocketController('/websocket'));
+    mapper.controller(WebSocketController('/websocket'));
 
-  await mapper.start();
+    await mapper.start(onListen: (server) => print('Listening on http://${server.address.host}:${server.port}'));
+  } on Exception {
+    await mapper.close();
+  }
 }
 
 void root(Request req, Response res) {
@@ -118,9 +122,9 @@ class UsersController extends Controller {
   UsersController(super.prefix) {
     post('/', _create);
     get('/', _getUsers);
-    get('/{id}', _getUser);
-    put('/{id}', _update);
-    delete('/{id}', _delete);
+    get(r'/{id|[\d]+}', _getUser);
+    put(r'/{id|[\d]+}', _update);
+    delete(r'/{id|[\d]+}', _delete);
   }
 
   void _create(Request req, Response response) async {

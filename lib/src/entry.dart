@@ -16,11 +16,22 @@ class Entry {
     }
 
     final parts = path.split('/');
+
     for (var i = 0; i < parts.length; i++) {
       final part = parts[i];
-      if (RegExp(r'{[\w]+}').hasMatch(part)) {
-        continue;
+      if (RegExp(r'{.+}').hasMatch(part)) {
+        final name = part.substring(1, part.length - 1);
+        final value = request.requestedUri.path.split('/')[i];
+        if (value.isEmpty) return false;
+        if (name.contains('|') && name.split('|').every((p) => p.isNotEmpty)) {
+          final pattern = name.split('|')[1];
+          if (!RegExp('^$pattern\$').hasMatch(value)) return false;
+          return true;
+        } else {
+          return true;
+        }
       }
+
       if (part != request.requestedUri.path.split('/')[i]) {
         return false;
       }
@@ -35,7 +46,7 @@ class Entry {
 
   /// Checks if the entry has path parameters.
   bool hasPathParameters() {
-    return RegExp(r'{[\w]+}').hasMatch(path);
+    return RegExp(r'{.+}').hasMatch(path);
   }
 
   /// Gets the path parameters from the request.
@@ -44,11 +55,17 @@ class Entry {
     final parts = path.split('/');
     for (var i = 0; i < parts.length; i++) {
       final part = parts[i];
-      if (RegExp(r'{[\w]+}').hasMatch(part)) {
+      if (RegExp(r'{.+}').hasMatch(part)) {
         final name = part.substring(1, part.length - 1);
         final value = request.requestedUri.path.split('/')[i];
         if (value.isEmpty) continue;
-        params[name] = value;
+        if (name.contains('|') && name.split('|').every((p) => p.isNotEmpty)) {
+          final pattern = name.split('|')[1];
+          if (!RegExp(pattern).hasMatch(value)) continue;
+          params[name.split('|')[0]] = value;
+        } else {
+          params[name] = value;
+        }
       }
     }
     return params;

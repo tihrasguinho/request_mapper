@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:io';
@@ -15,8 +16,9 @@ import 'response.dart';
 
 class Mapper {
   final Group _group;
+  late final StreamSubscription<io.HttpRequest> _subscription;
 
-  const Mapper._(this._group);
+  Mapper._(this._group);
 
   Mapper({String? prefix}) : this._(Group(prefix));
 
@@ -109,9 +111,9 @@ class Mapper {
   }
 
   /// Starts the server, listening on [address] and [port].
-  Future<void> start({Object? address, int? port}) async {
+  Future<void> start({Object? address, int? port, void Function(io.HttpServer server)? onListen}) async {
     final server = await io.HttpServer.bind(address ?? '0.0.0.0', port ?? 8080);
-    server.listen(
+    _subscription = server.listen(
       (request) async {
         for (final entry in _group.entries) {
           if (entry.path.endsWith('/ws') && entry.pathMatches(request)) {
@@ -138,12 +140,20 @@ class Mapper {
 
         return request.send(
           404,
-          headers: {io.HttpHeaders.contentTypeHeader: 'text/plain'},
-          body: 'Not found',
+          headers: {io.HttpHeaders.contentTypeHeader: 'application/json charset=utf-8'},
+          body: json.encode({'error': 'Route not found'}),
         );
       },
+      onError: (error) => print('Server error: $error'),
+      onDone: () => print('Server closed'),
+      cancelOnError: true,
     );
+
+    return onListen?.call(server);
   }
+
+  /// Closes the server.
+  Future<void> close() => _subscription.cancel();
 }
 
 extension _HttpRequestExt on io.HttpRequest {
