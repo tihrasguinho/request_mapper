@@ -113,6 +113,7 @@ class Mapper {
   /// Starts the server, listening on [address] and [port].
   Future<void> start({Object? address, int? port, void Function(io.HttpServer server)? onListen}) async {
     final server = await io.HttpServer.bind(address ?? '0.0.0.0', port ?? 8080);
+    onListen?.call(server);
     _subscription = server.listen(
       (request) async {
         for (final entry in _group.entries) {
@@ -148,8 +149,6 @@ class Mapper {
       onDone: () => print('Server closed'),
       cancelOnError: true,
     );
-
-    return onListen?.call(server);
   }
 
   /// Closes the server.
