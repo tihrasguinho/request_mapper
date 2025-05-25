@@ -1,16 +1,23 @@
 import 'dart:io';
 
+import 'package:request_mapper/src/json.dart';
 import 'package:request_mapper/src/method.dart';
-import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf.dart' show Handler, Middleware, Pipeline;
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 
 final RegExp _pathRegex = RegExp(
     r'^\/(?!.*\/\/)(?:(?:[a-zA-Z0-9._\-]+|<[^<>|]+(?:\|[^<>]+)?>)(?:\/(?:[a-zA-Z0-9._\-]+|<[^<>|]+(?:\|[^<>]+)?>))*)?$');
 
+Handler _notFoundHandler() {
+  return (request) => Json.notFound(
+        body: {'error': 'Route not found!'},
+      );
+}
+
 abstract interface class App {
   factory App({String? prefix}) => AppImp(prefix: prefix);
-  void add(String path, Method method, Handler handler);
+  void add(String path, Method method, Function handler);
   void get(String path, Function handler);
   void post(String path, Function handler);
   void put(String path, Function handler);
@@ -26,7 +33,7 @@ abstract interface class App {
 
 class AppImp implements App {
   final String? prefix;
-  final Router _router = Router();
+  final Router _router = Router(notFoundHandler: _notFoundHandler());
   final List<Middleware> _middlewares = [];
 
   AppImp({this.prefix});
@@ -136,7 +143,7 @@ abstract class Controller {
   final List<Middleware> _middlewares;
 
   Controller(this._prefix, {List<Middleware>? middlewares})
-      : _router = Router(),
+      : _router = Router(notFoundHandler: _notFoundHandler()),
         _middlewares = middlewares ?? [];
 
   void add(String path, Method method, Function handler) {
