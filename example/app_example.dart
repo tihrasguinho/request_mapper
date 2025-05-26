@@ -1,13 +1,11 @@
 import 'package:request_mapper/request_mapper.dart';
 
 void main() async {
-  final app = App(prefix: '/api/v1');
+  final app = createApp(prefix: '/api/v1');
 
   app.get('/', (_) => Response(200, body: 'Hello, World!'));
 
   app.controller(UsersController());
-
-  app.middleware(logRequests());
 
   final server = await app.start();
 
@@ -17,10 +15,14 @@ void main() async {
 class UsersController extends Controller {
   final List<User> _users = [];
 
-  UsersController() : super('/users') {
-    post('/', createOne);
-    get('/', findMany);
-    get(r'/<userId|[\d]+>', findOne);
+  UsersController() : super('/users');
+
+  @override
+  void setup(Register register) {
+    register.post('/', createOne);
+    register.get('/', findMany);
+    register.get(r'/<userId|[\d]+>', findOne);
+    register.middleware(logRequests());
   }
 
   Future<Json> createOne(Request request) async {
